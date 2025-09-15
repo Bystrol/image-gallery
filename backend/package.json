@@ -12,7 +12,7 @@
         "local": "serverless offline start"
     },
     "engines": {
-        "node": ">=18.0.0"
+        "node": ">=20.0.0"
     },
     "dependencies": {
         "aws-sdk": "^2.1691.0",
