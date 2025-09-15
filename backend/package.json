@@ -1,0 +1,38 @@
+{
+    "name": "image-gallery-backend",
+    "version": "1.0.0",
+    "description": "Serverless AWS Lambda API for image upload to S3",
+    "main": "src/handlers/uploadImage.js",
+    "scripts": {
+        "deploy": "serverless deploy",
+        "deploy:dev": "serverless deploy --stage dev",
+        "deploy:prod": "serverless deploy --stage prod",
+        "remove": "serverless remove",
+        "logs": "serverless logs -f uploadImage -t",
+        "local": "serverless offline start"
+    },
+    "engines": {
+        "node": ">=18.0.0"
+    },
+    "dependencies": {
+        "aws-sdk": "^2.1691.0",
+        "mime-types": "^2.1.35",
+        "multer": "^2.0.2",
+        "multer-s3": "^3.0.1",
+        "uuid": "^9.0.1"
+    },
+    "devDependencies": {
+        "serverless": "^3.38.0",
+        "serverless-dotenv-plugin": "^6.0.0",
+        "serverless-offline": "^13.3.0"
+    },
+    "keywords": [
+        "serverless",
+        "aws",
+        "lambda",
+        "s3",
+        "image-upload"
+    ],
+    "author": "Your Name",
+    "license": "MIT"
+}
