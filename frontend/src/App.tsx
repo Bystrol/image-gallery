@@ -20,9 +20,10 @@ function App() {
 
   return (
     <>
-   <input type="file" onChange={(e) => setFile(e.target.files?.[0] || null)} />
-   {file && <button onClick={handleUpload} disabled={isUploading}>{isUploading ? 'Uploading...' : 'Upload'}</button>}
-   </>
+      <h1>Hello World</h1>
+      <input type="file" onChange={(e) => setFile(e.target.files?.[0] || null)} />
+      {file && <button onClick={handleUpload} disabled={isUploading}>{isUploading ? 'Uploading...' : 'Upload'}</button>}
+    </>
   )
 }
 
