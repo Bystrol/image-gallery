@@ -2,26 +2,24 @@ name: PR Preview with Codespaces
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
-  pull_request:
-    types: [closed]
+    types: [opened, synchronize, reopened, closed]
 
 jobs:
   cleanup-preview:
     if: github.event.action == 'closed'
     runs-on: ubuntu-latest
     permissions:
-      codespaces: write
+      contents: read
       pull-requests: write
-    
+
     steps:
       - name: Cleanup Codespaces
         run: |
           echo "Cleaning up codespaces for PR #${{ github.event.number }}..."
-          
+
           # List all codespaces for this repository
           CODESPACES=$(gh api repos/${{ github.repository }}/codespaces --jq '.codespaces[] | select(.git_status.ref == "${{ github.head_ref }}") | .name')
-          
+
           # Delete each codespace associated with this PR branch
           for codespace in $CODESPACES; do
             echo "Deleting codespace: $codespace"
@@ -34,7 +32,7 @@ jobs:
     if: github.event.action != 'closed'
     runs-on: ubuntu-latest
     permissions:
-      codespaces: write
+      contents: read
       pull-requests: write
 
     steps:
@@ -51,9 +49,9 @@ jobs:
         id: check_codespace
         run: |
           echo "Checking for existing codespace for PR branch ${{ github.head_ref }}..."
-          
+
           EXISTING=$(gh api repos/${{ github.repository }}/codespaces --jq '.codespaces[] | select(.git_status.ref == "${{ github.head_ref }}" and .state == "Available") | .web_url' | head -1)
-          
+
           if [ -n "$EXISTING" ]; then
             echo "Found existing codespace: $EXISTING"
             echo "codespace_url=$EXISTING" >> $GITHUB_OUTPUT
@@ -115,15 +113,15 @@ jobs:
             🚀 **Preview Environment Ready!**
 
             ${{ steps.check_codespace.outputs.existing == 'true' && 'An existing Codespace is available for this PR.' || 'A new Codespace has been created for this PR.' }}
-            
+
             **🔗 [Open Preview Codespace](${{ steps.check_codespace.outputs.codespace_url || steps.create_codespace.outputs.codespace_url }})**
-            
+
             **What's included:**
             - 🎯 Frontend development server (React + Vite) on port 3000
             - ⚡ Backend development server on port 8000
             - 🛠️ Pre-installed dependencies and VS Code extensions
             - ☁️ AWS CLI and GitHub CLI ready to use
-            
+
             The Codespace will be automatically cleaned up when this PR is closed.
 
       # 6. Handle creation failures
@@ -134,10 +132,10 @@ jobs:
           header: codespace-preview
           message: |
             ❌ **Preview Environment Creation Failed**
-            
+
             There was an issue creating the Codespace for this PR. This could be due to:
             - Repository limits on concurrent Codespaces
             - Temporary GitHub Codespaces service issues
             - Configuration issues with the devcontainer
-            
+
             Please try again later or contact a maintainer if the issue persists.
