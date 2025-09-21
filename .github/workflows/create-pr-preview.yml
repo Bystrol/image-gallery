@@ -1,0 +1,46 @@
+name: PR Preview with Codespaces
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  create-preview:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      codespaces: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # 1. Create Codespace for the PR
+      - name: Create Codespace
+        id: create_codespace
+        run: |
+          RESPONSE=$(gh api \
+            -X POST \
+            repos/${{ github.repository }}/codespaces \
+            -F ref="${{ github.head_ref }}" \
+            -F machine="basicLinux" \
+            -F devcontainer_path=".devcontainer/devcontainer.json")
+
+          # Extract Codespace ID and web URL
+          ID=$(echo "$RESPONSE" | jq -r '.id')
+          URL=$(echo "$RESPONSE" | jq -r '.web_url')
+          echo "codespace_id=$ID" >> $GITHUB_OUTPUT
+          echo "codespace_url=$URL" >> $GITHUB_OUTPUT
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # 2. Comment the Codespace link directly on the PR
+      - name: Post Preview URL
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: codespace-preview
+          message: |
+            🚀 **PR Preview Ready!**
+
+            You can test this branch live here:  
+            [Open Preview Codespace](${{ steps.create_codespace.outputs.codespace_url }})
