@@ -4,5 +4,6 @@ import { defineConfig } from "vite";
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
-  base: process.env.NODE_ENV === "production" ? "/image-gallery/" : "/",
+  // For PR previews, use relative paths, for production use the repo name
+  base: process.env.GITHUB_PAGES_BASE_PATH || "/",
 });

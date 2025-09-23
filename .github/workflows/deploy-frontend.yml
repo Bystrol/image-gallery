@@ -33,7 +33,7 @@ jobs:
         run: cd frontend && npm ci
 
       - name: Build
-        run: cd frontend && npm run build
+        run: cd frontend && GITHUB_PAGES_BASE_PATH="/image-gallery/" npm run build
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
@@ -55,6 +55,8 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+        env:
+          GITHUB_PAGES_BASE_PATH: "/image-gallery/"
 
   preview:
     permissions: write-all
@@ -66,6 +68,17 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: frontend-dist-${{ github.sha }}
+
+      - name: Prepare build artifacts for Pages
+        run: |
+          # List downloaded files to verify
+          ls -la
+          # Ensure index.html exists
+          if [ ! -f "index.html" ]; then
+            echo "❌ Error: index.html not found in build artifacts"
+            exit 1
+          fi
+          echo "✅ Build artifacts prepared successfully"
 
       - name: Deploy PR Preview
         id: deployment
@@ -98,29 +111,47 @@ jobs:
               `⏰ **Expires**: 1 day from now\n\n` +
               `> This preview will be available for 1 day. After that, please recreate the PR to get a fresh preview.`;
 
-            // Check if comment already exists
-            const { data: comments } = await github.rest.issues.listComments({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-            });
+            // Check if PR is from a fork
+            const isFork = pr.head.repo.full_name !== pr.base.repo.full_name;
 
-            const existingComment = comments.find(c => 
-              c.body.includes('PR Preview') && c.user.type === 'Bot'
-            );
+            if (isFork) {
+              console.log('ℹ️ PR is from a fork - commenting may not work due to permissions');
+              console.log('🔗 Preview URL (may not be accessible):', previewUrl);
 
-            if (existingComment) {
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: existingComment.id,
-                body: comment
-              });
-            } else {
-              await github.rest.issues.createComment({
+              // For fork PRs, we can't comment but the preview should still work
+              return;
+            }
+
+            try {
+              // Check if comment already exists
+              const { data: comments } = await github.rest.issues.listComments({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: context.issue.number,
-                body: comment
               });
+
+              const existingComment = comments.find(c =>
+                c.body.includes('PR Preview') && c.user.type === 'Bot'
+              );
+
+              if (existingComment) {
+                await github.rest.issues.updateComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  comment_id: existingComment.id,
+                  body: comment
+                });
+                console.log('✅ Updated existing PR comment');
+              } else {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.issue.number,
+                  body: comment
+                });
+                console.log('✅ Created new PR comment');
+              }
+            } catch (error) {
+              console.log('⚠️ Error managing PR comment:', error.message);
+              console.log('ℹ️ This is expected for fork PRs - the preview should still work');
             }
