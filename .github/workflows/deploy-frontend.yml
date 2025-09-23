@@ -10,7 +10,6 @@ permissions:
   pages: write
   id-token: write
   issues: write
-  pull_requests: write
 
 concurrency:
   group: "pages"
@@ -34,7 +33,7 @@ jobs:
         run: cd frontend && npm ci
 
       - name: Build
-        run: cd frontend && npm run build
+        run: cd frontend && GITHUB_PAGES_BASE_PATH="/image-gallery/" npm run build
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
@@ -56,22 +55,30 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+        env:
+          GITHUB_PAGES_BASE_PATH: "/image-gallery/"
 
   preview:
+    permissions: write-all
     runs-on: ubuntu-latest
     needs: build
     if: github.event_name == 'pull_request'
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
-      issues: write
-      pull_requests: write
     steps:
       - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
           name: frontend-dist-${{ github.sha }}
+
+      - name: Prepare build artifacts for Pages
+        run: |
+          # List downloaded files to verify
+          ls -la
+          # Ensure index.html exists
+          if [ ! -f "index.html" ]; then
+            echo "❌ Error: index.html not found in build artifacts"
+            exit 1
+          fi
+          echo "✅ Build artifacts prepared successfully"
 
       - name: Deploy PR Preview
         id: deployment
@@ -83,6 +90,7 @@ jobs:
       - name: Comment PR with preview link
         uses: actions/github-script@v7
         with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const { data: pr } = await github.rest.pulls.get({
               owner: context.repo.owner,
@@ -103,6 +111,17 @@ jobs:
               `⏰ **Expires**: 1 day from now\n\n` +
               `> This preview will be available for 1 day. After that, please recreate the PR to get a fresh preview.`;
 
+            // Check if PR is from a fork
+            const isFork = pr.head.repo.full_name !== pr.base.repo.full_name;
+
+            if (isFork) {
+              console.log('ℹ️ PR is from a fork - commenting may not work due to permissions');
+              console.log('🔗 Preview URL (may not be accessible):', previewUrl);
+
+              // For fork PRs, we can't comment but the preview should still work
+              return;
+            }
+
             try {
               // Check if comment already exists
               const { data: comments } = await github.rest.issues.listComments({
@@ -122,6 +141,7 @@ jobs:
                   comment_id: existingComment.id,
                   body: comment
                 });
+                console.log('✅ Updated existing PR comment');
               } else {
                 await github.rest.issues.createComment({
                   owner: context.repo.owner,
@@ -129,24 +149,9 @@ jobs:
                   issue_number: context.issue.number,
                   body: comment
                 });
+                console.log('✅ Created new PR comment');
               }
-
-              console.log('✅ PR comment successfully created/updated');
             } catch (error) {
-              console.log('⚠️ Could not create PR comment (this may be due to fork permissions):', error.message);
-
-              // Create a comment on the PR timeline as fallback
-              try {
-                await github.rest.pulls.createReview({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  pull_number: context.issue.number,
-                  body: comment,
-                  event: 'COMMENT'
-                });
-                console.log('✅ PR review comment created as fallback');
-              } catch (fallbackError) {
-                console.log('⚠️ Could not create fallback comment either:', fallbackError.message);
-                console.log('ℹ️ This is expected when PR is from a fork without write permissions');
-              }
+              console.log('⚠️ Error managing PR comment:', error.message);
+              console.log('ℹ️ This is expected for fork PRs - the preview should still work');
             }
