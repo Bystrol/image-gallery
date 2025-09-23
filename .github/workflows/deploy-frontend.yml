@@ -10,7 +10,6 @@ permissions:
   pages: write
   id-token: write
   issues: write
-  pull_requests: write
 
 concurrency:
   group: "pages"
