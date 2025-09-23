@@ -37,11 +37,11 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v4
 
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
         with:
+          name: frontend-dist-${{ github.sha }}
           path: "./frontend/dist"
-          name: github-pages
 
   deploy:
     environment:
@@ -63,7 +63,7 @@ jobs:
       - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
-          name: github-pages
+          name: frontend-dist-${{ github.sha }}
 
       - name: Deploy PR Preview
         id: deployment
