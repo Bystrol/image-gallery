@@ -41,6 +41,7 @@ jobs:
         uses: actions/upload-pages-artifact@v3
         with:
           path: "./frontend/dist"
+          name: github-pages
 
   deploy:
     environment:
@@ -59,11 +60,16 @@ jobs:
     needs: build
     if: github.event_name == 'pull_request'
     steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: github-pages
+
       - name: Deploy PR Preview
         id: deployment
         uses: actions/upload-pages-artifact@v3
         with:
-          path: "./frontend/dist"
+          path: "."
           retention-days: 1
 
       - name: Comment PR with preview link
